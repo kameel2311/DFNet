@@ -7,6 +7,7 @@ import os, pdb
 from torchsummary import summary
 from dataset_loaders.load_7Scenes import load_7Scenes_dataloader
 from dataset_loaders.load_Cambridge import load_Cambridge_dataloader
+from dataset_loaders.load_custom import load_custom_dataloader
 import os.path as osp
 import numpy as np
 from utils.utils import plot_features, save_image_saliancy, save_image_saliancy_single
@@ -441,6 +442,14 @@ def train():
         near = near
         far = far
 
+        print('NEAR FAR', near, far)
+        train_feature(args, train_dl, val_dl, test_dl, hwf, i_split, near, far)
+        return
+    
+    elif args.dataset_type == 'Custom':
+        train_dl, val_dl, test_dl, hwf, i_split, near, far = load_custom_dataloader(args)
+        near = near
+        far = far
         print('NEAR FAR', near, far)
         train_feature(args, train_dl, val_dl, test_dl, hwf, i_split, near, far)
         return

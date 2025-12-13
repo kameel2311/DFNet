@@ -22,6 +22,7 @@ from models.rendering import render_path
 from models.nerfw import to8b
 from dataset_loaders.load_7Scenes import load_7Scenes_dataloader
 from dataset_loaders.load_Cambridge import load_Cambridge_dataloader
+from dataset_loaders.load_custom import load_custom_dataloader
 from utils.utils import freeze_bn_layer
 from feature.direct_feature_matching import train_feature_matching
 # import torch.onnx
@@ -99,6 +100,8 @@ def train():
         train_dl, val_dl, test_dl, hwf, i_split, near, far = load_7Scenes_dataloader(args)
     elif args.dataset_type == 'Cambridge':
         train_dl, val_dl, test_dl, hwf, i_split, near, far = load_Cambridge_dataloader(args)
+    elif args.dataset_type == 'Custom':
+        train_dl, val_dl, test_dl, hwf, i_split, near, far = load_custom_dataloader(args)
     else:
         print("please choose dataset_type: 7Scenes or Cambridge, exiting...")
         sys.exit()

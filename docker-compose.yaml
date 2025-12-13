@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  df-net:
+    container_name: df-net
+    build: continual-nerf-localization-nerfstudio:latest
+    runtime: nvidia
+    user: "${UID}:${GID}"
+    volumes:
+      - .:/workspace
+      - /home/${USER}/.cache/:/home/user/.cache/
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - "DISPLAY=$DISPLAY"
+    shm_size: "12gb"
+    stdin_open: true
+    tty: true
+    restart: "no"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]

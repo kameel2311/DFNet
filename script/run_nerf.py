@@ -16,6 +16,7 @@ from models.options import config_parser
 from models.rendering import *
 from dataset_loaders.load_7Scenes import load_7Scenes_dataloader_NeRF
 from dataset_loaders.load_Cambridge import load_Cambridge_dataloader_NeRF
+from dataset_loaders.load_custom import load_custom_dataloader_NeRF
 
 # losses
 from models.losses import loss_dict
@@ -260,6 +261,14 @@ def train():
         near = bds[0]
         far = bds[1]
 
+        print('NEAR FAR', near, far)
+        train_nerf(args, train_dl, val_dl, hwf, i_split, near, far, render_poses, render_img)
+        return
+    
+    elif args.dataset_type == 'Custom':
+        train_dl, val_dl, hwf, i_split, bds, render_poses, render_img = load_custom_dataloader_NeRF(args)
+        near = bds[0]
+        far = bds[1]
         print('NEAR FAR', near, far)
         train_nerf(args, train_dl, val_dl, hwf, i_split, near, far, render_poses, render_img)
         return

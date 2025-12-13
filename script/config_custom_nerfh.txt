@@ -1,0 +1,11 @@
+expname=nerfh
+basedir=../logs/custom_scene
+datadir=/workspace/datasets/Loc_Conf_Dataset/map_empty
+scene_name=map_empty
+dataset_type=Custom
+lrate_decay=5
+trainskip=1
+testskip=1
+df=2
+NeRFH=True
+encode_hist=True
