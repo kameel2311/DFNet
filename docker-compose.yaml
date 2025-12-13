@@ -3,11 +3,12 @@ version: "3.8"
 services:
   df-net:
     container_name: df-net
-    build: continual-nerf-localization-nerfstudio:latest
+    build: .
     runtime: nvidia
     user: "${UID}:${GID}"
     volumes:
       - .:/workspace
+      - ~/Repos/Continual-NeRF-Localization/datasets:/workspace/datasets
       - /home/${USER}/.cache/:/home/user/.cache/
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
