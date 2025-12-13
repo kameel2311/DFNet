@@ -234,8 +234,10 @@ def train_feature(args, train_dl, val_dl, test_dl, hwf, i_split, near, far):
 
     # # load pretrained PoseNet model
     if args.DFNet_s:
+        print("load DFNet_s")
         feat_model = DFNet_s()
     else:
+        print("load DFNet")
         feat_model = DFNet()
     
     if args.pretrain_model_path != '':

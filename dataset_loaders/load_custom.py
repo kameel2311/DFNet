@@ -55,7 +55,6 @@ def load_custom_dataloader(args):
         ret_hist = True
     
     kwargs = dict(
-        scene=args.scene_name,
         data_path=args.datadir,
         transform=data_transform,
         target_transform=target_transform,
@@ -112,7 +111,6 @@ def load_custom_dataloader_NeRF(args):
         ret_hist = True
     
     kwargs = dict(
-        scene=args.scene_name,
         data_path=args.datadir,
         transform=data_transform,
         target_transform=target_transform,

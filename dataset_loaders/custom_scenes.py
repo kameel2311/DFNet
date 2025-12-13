@@ -11,21 +11,21 @@ from dataset_loaders.utils.color import rgb_to_yuv
 def load_image(filename):
     try:
         img = Image.open(filename)
+        img = img.convert('RGB')
         return img
     except Exception as e:
         print(f'Could not load image {filename}, Error: {e}')
         return None
 
 class CustomScenes(data.Dataset):
-    def __init__(self, scene, data_path, train, transform=None,
+    def __init__(self, data_path, train, transform=None,
                  target_transform=None, seed=7, df=1., 
                  trainskip=1, testskip=1, train_split=0.8,
-                 ret_idx=False, fix_idx=False, ret_hist=False, hist_bin=10):
+                 ret_idx=False, fix_idx=False, ret_hist=False, hist_bin=10, all_images=False):
         """
         Custom dataset loader for nerfstudio-style JSON format
         
         Args:
-            scene: scene name (parent folder name)
             data_path: path to the dataset root
             train: if True, return training images
             transform: transform to apply to images
@@ -47,7 +47,7 @@ class CustomScenes(data.Dataset):
         np.random.seed(seed)
         
         # Load JSON file
-        json_path = osp.join(data_path, scene, 'transforms.json')
+        json_path = osp.join(data_path, 'transforms.json')
         with open(json_path, 'r') as f:
             meta = json.load(f)
         
@@ -70,12 +70,15 @@ class CustomScenes(data.Dataset):
         indices = np.arange(n_frames)
         np.random.shuffle(indices)
         n_train = int(n_frames * train_split)
-        
-        if train:
-            indices = indices[:n_train][::trainskip]
+
+        if not all_images:
+            if train:
+                indices = indices[:n_train][::trainskip]
+            else:
+                indices = indices[n_train:][::testskip]
         else:
-            indices = indices[n_train:][::testskip]
-        
+            indices = indices
+
         self.gt_idx = indices
         
         # Extract image paths and poses
@@ -88,7 +91,7 @@ class CustomScenes(data.Dataset):
             # Get image path
             img_path = frame['file_path']
             if not osp.isabs(img_path):
-                img_path = osp.join(data_path, scene, img_path)
+                img_path = osp.join(data_path, img_path)
             self.rgb_files.append(img_path)
             
             # Get pose (transform_matrix is 4x4)
