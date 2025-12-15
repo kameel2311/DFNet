@@ -9,6 +9,9 @@ def config_parser():
     parser.add_argument("--datadir", type=str, default='./data/llff/fern', help='input data directory')
     parser.add_argument("--places365_model_path", type=str, default='', help='ckpt path of places365 pretrained model')
 
+    # Custom
+    parser.add_argument("--world_setup_path", type=str, default=None, help='path to world_setup.json')
+
     # 7Scenes
     parser.add_argument("--trainskip", type=int, default=1, help='will load 1/N images from train sets, useful for large datasets like 7 Scenes')
     parser.add_argument("--df", type=float, default=1., help='image downscale factor')

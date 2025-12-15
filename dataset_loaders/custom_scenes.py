@@ -20,8 +20,9 @@ def load_image(filename):
 class CustomScenes(data.Dataset):
     def __init__(self, data_path, train, transform=None,
                  target_transform=None, seed=7, df=1., 
-                 trainskip=1, testskip=1, train_split=0.8,
-                 ret_idx=False, fix_idx=False, ret_hist=False, hist_bin=10, all_images=False):
+                 trainskip=1, testskip=1, train_split=0.9,
+                 ret_idx=False, fix_idx=False, ret_hist=False, hist_bin=10, all_images=False,
+                 world_setup_path=None):
         """
         Custom dataset loader for nerfstudio-style JSON format
         
@@ -43,13 +44,43 @@ class CustomScenes(data.Dataset):
         self.fix_idx = fix_idx
         self.ret_hist = ret_hist
         self.hist_bin = hist_bin
-        
+        self.world_setup_path = world_setup_path
+        print(f"CustomScenes: world_setup_path = {self.world_setup_path}")
         np.random.seed(seed)
         
         # Load JSON file
         json_path = osp.join(data_path, 'transforms.json')
         with open(json_path, 'r') as f:
             meta = json.load(f)
+
+        # Load world_setup.json if it exists
+        if osp.exists(self.world_setup_path):
+            with open(self.world_setup_path, 'r') as f:
+                world_setup = json.load(f)
+            self.near = world_setup.get('near', 0.1)
+            self.far = world_setup.get('far', 10.0)
+            self.pose_scale = world_setup.get('pose_scale', 1.0)
+            self.pose_scale2 = world_setup.get('pose_scale2', 1.0)
+            self.move_all_cam_vec = world_setup.get('move_all_cam_vec', [0.0, 0.0, 0.0])
+            print(f"Loaded world_setup.json:")
+            print(f"  near={self.near}, far={self.far}")
+            print(f"  pose_scale={self.pose_scale}, pose_scale2={self.pose_scale2}")
+            print(f"  move_all_cam_vec={self.move_all_cam_vec}")
+        else:
+            print(f"Warning: world_setup.json not found at {world_setup_path}")
+            print("Using default values. This may cause poor results!")
+            self.near = 0.0
+            self.far = 10.0
+            self.pose_scale = 1.0
+            self.pose_scale2 = 1.0
+            self.move_all_cam_vec = [0.0, 0.0, 0.0]
+
+        # Print dataset info
+        print(f"Dataset loaded from {data_path}")
+        print(f"Number of frames in dataset: {len(meta['frames'])}")
+        print("Near/Far bounds set to: ", self.near, self.far)
+        print("Pose scale factors set to: ", self.pose_scale, self.pose_scale2)
+        print("Camera movement vector set to: ", self.move_all_cam_vec)        
         
         # Extract camera intrinsics
         self.W = meta['w']
@@ -101,13 +132,6 @@ class CustomScenes(data.Dataset):
             self.poses.append(pose)
         
         self.poses = np.array(self.poses)
-        
-        # Set near/far bounds (you may need to adjust these)
-        self.near = 0.0
-        self.far = 10.0
-        self.pose_scale = 1.0
-        self.pose_scale2 = 1.0
-        self.move_all_cam_vec = [0.0, 0.0, 0.0]
         
     def __len__(self):
         return len(self.rgb_files)

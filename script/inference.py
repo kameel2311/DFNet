@@ -63,6 +63,63 @@ def pose_matrix_to_quaternion_translation(pose):
     
     return quaternion, translation
 
+def transform_pose_to_original_frame(pose, transform_params):
+    """
+    Transform pose from DFNet frame back to original dataset frame
+    
+    For DFNet, we ONLY applied recentering, so we ONLY need to undo that.
+    """
+    pose = pose.clone()
+    pose_matrix = pose.reshape(3, 4)
+    
+    # Inverse of recentering: subtract the move vector
+    if transform_params['move_all_cam_vec'] != [0., 0., 0.]:
+        move_vec = torch.tensor(transform_params['move_all_cam_vec'])
+        pose_matrix[:3, 3] -= move_vec
+    
+    return pose_matrix
+
+def transform_pose_to_dfnet_frame(pose, transform_params):
+    """
+    Transform pose from original dataset frame to DFNet frame
+    
+    For DFNet, we ONLY apply recentering (NO scaling)
+    """
+    pose = pose.clone()
+    pose_matrix = pose.reshape(3, 4)
+    
+    # Apply recentering
+    if transform_params['move_all_cam_vec'] != [0., 0., 0.]:
+        move_vec = torch.tensor(transform_params['move_all_cam_vec'])
+        pose_matrix[:3, 3] += move_vec
+    
+    return pose_matrix
+
+def transform_pose_to_nerf_frame(pose, transform_params):
+    """
+    Transform pose from original dataset frame to NeRF frame
+    
+    This applies the SAME transformation as during training:
+    Original → [scale, move, scale2] → NeRF frame
+    """
+    pose = pose.clone()
+    pose_matrix = pose.reshape(3, 4)
+    
+    # Forward transform: same order as training
+    # Step 1: Apply pose_scale
+    pose_matrix[:3, 3] *= transform_params['pose_scale']
+    
+    # Step 2: Move to origin
+    if transform_params['move_all_cam_vec'] != [0., 0., 0.]:
+        move_vec = torch.tensor(transform_params['move_all_cam_vec'])
+        pose_matrix[:3, 3] += move_vec * transform_params['pose_scale']
+    
+    # Step 3: Apply pose_scale2
+    if transform_params['pose_scale2'] != 1.0:
+        pose_matrix[:3, 3] *= transform_params['pose_scale2']
+    
+    # return pose_matrix.reshape(-1)
+    return pose_matrix
 
 def inference_single_image(model, image, device, preprocess=True):
     """
@@ -101,36 +158,49 @@ def inference_single_image(model, image, device, preprocess=True):
 
 def evaluate_dataset(model, dataset_path, model_checkpoint, 
                      df=2.0, use_dfnet_s=False, preprocess=True,
-                     save_results=True, output_dir='./inference_results'):
+                     save_results=True, output_dir='./inference_results',
+                     compare_in_dfnet_frame=True,
+                     world_setup_path=None):
     """
     Evaluate trained model on a dataset
+    
     Args:
-        model: trained DFNet model
-        dataset_path: path to dataset root
-        scene_name: name of the scene
-        model_checkpoint: path to model checkpoint
-        df: downscale factor
-        use_dfnet_s: whether using DFNet_s variant
-        preprocess: whether to use ImageNet normalization
-        save_results: whether to save detailed results to file
-        output_dir: directory to save results
+        compare_in_dfnet_frame: If True, transform GT to DFNet frame (centered)
+                               If False, transform predictions to original frame
     """
     
     # Create dataset
     data_transform = transforms.Compose([transforms.ToTensor()])
     target_transform = transforms.Lambda(lambda x: torch.Tensor(x))
+
+    use_transforms = world_setup_path is not None
     
     dataset = CustomScenes(
         data_path=dataset_path,
-        train=False,  # Use test split
+        train=False,
         transform=data_transform,
         target_transform=target_transform,
         df=df,
-        testskip=1,  # Don't skip any images
+        testskip=1,
         ret_idx=False,
         ret_hist=False,
-        all_images=True
+        all_images=True,
+        world_setup_path=world_setup_path
     )
+
+    # Get transform parameters - for DFNet, only move_vec is used
+    transform_params = {
+        'move_all_cam_vec': dataset.move_all_cam_vec,
+        'pose_scale': 1.0,  # NOT used for DFNet
+        'pose_scale2': 1.0  # NOT used for DFNet
+    }
+
+    print(f"\nDFNet Transform parameters:")
+    print(f"  move_all_cam_vec: {transform_params['move_all_cam_vec']}")
+    print(f"  pose_scale: NOT USED (DFNet works at original scale)")
+    print(f"  pose_scale2: NOT USED (only for NeRF)")
+    print(f"  compare_in_dfnet_frame: {compare_in_dfnet_frame}")
+    print(f"  use_transforms: {use_transforms}")
     
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=2)
     
@@ -147,13 +217,24 @@ def evaluate_dataset(model, dataset_path, model_checkpoint,
     # Evaluate each image
     for idx, (image, gt_pose) in enumerate(tqdm(dataloader, desc="Processing images")):
         
-        # Get prediction
+        # Get prediction (in DFNet centered frame)
         pred_pose = inference_single_image(model, image[0], device, preprocess)
         
-        # Convert to quaternion + translation
         gt_pose_matrix = gt_pose.reshape(3, 4)
         pred_pose_matrix = pred_pose.reshape(3, 4)
         
+        # Transform to the same frame for comparison
+        if use_transforms:
+            if compare_in_dfnet_frame:
+                # Transform GT to DFNet frame (centered, no scaling)
+                gt_pose_matrix = transform_pose_to_dfnet_frame(gt_pose_matrix, transform_params)
+                # pred_pose is already in DFNet frame
+            else:
+                # Transform prediction to original frame
+                pred_pose_matrix = transform_pose_to_original_frame(pred_pose_matrix, transform_params)
+                # gt_pose is already in original frame
+        
+        # Convert to quaternion + translation
         gt_quat, gt_trans = pose_matrix_to_quaternion_translation(gt_pose_matrix)
         pred_quat, pred_trans = pose_matrix_to_quaternion_translation(pred_pose_matrix)
         
@@ -181,9 +262,12 @@ def evaluate_dataset(model, dataset_path, model_checkpoint,
     translation_errors = np.array(translation_errors)
     rotation_errors = np.array(rotation_errors)
     
+    comparison_frame = 'DFNet (centered)' if compare_in_dfnet_frame else 'Original'
+    
     stats = {
         'dataset_path': dataset_path,
         'num_images': len(dataset),
+        'comparison_frame': comparison_frame,
         'translation_error': {
             'mean': float(np.mean(translation_errors)),
             'median': float(np.median(translation_errors)),
@@ -203,6 +287,7 @@ def evaluate_dataset(model, dataset_path, model_checkpoint,
     # Print results
     print("\n" + "=" * 80)
     print(f"RESULTS FOR {dataset_path}")
+    print(f"Comparison Frame: {comparison_frame}")
     print("=" * 80)
     print(f"\nTranslation Error (meters):")
     print(f"  Mean:   {stats['translation_error']['mean']:.4f} m")
@@ -261,15 +346,20 @@ def main():
     # Dataset arguments
     parser.add_argument('--dataset_path', type=str, required=True,
                        help='Path to dataset root directory')
-
     parser.add_argument('--df', type=float, default=2.0,
                        help='Downscale factor for images (default: 2.0)')
+    
+    # Comparison arguments
+    parser.add_argument('--compare_in_original_frame', action='store_true',
+                       help='Compare in original frame instead of NeRF frame')
     
     # Output arguments
     parser.add_argument('--output_dir', type=str, default='./inference_results',
                        help='Directory to save results')
     parser.add_argument('--no_save', action='store_true',
                        help='Do not save results to files')
+    parser.add_argument('--world_setup_path', type=str, default=None, 
+                       help='Path to world_setup.json')
     
     args = parser.parse_args()
     
@@ -294,7 +384,9 @@ def main():
         use_dfnet_s=args.use_dfnet_s,
         preprocess=args.preprocess,
         save_results=not args.no_save,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        compare_in_dfnet_frame=not args.compare_in_original_frame,  # Default: compare in NeRF frame
+        world_setup_path=args.world_setup_path
     )
 
 

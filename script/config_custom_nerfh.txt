@@ -8,3 +8,4 @@ testskip=1
 df=2
 NeRFH=True
 encode_hist=True
+world_setup_path=/workspace/script/recommended_world_setup.json
