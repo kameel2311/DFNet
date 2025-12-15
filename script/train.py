@@ -137,6 +137,8 @@ def train():
         train_feature_matching(args, model, feat_model, optimizer, i_split, hwf, near, far, device, early_stopping, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl)
     elif args.dataset_type == 'Cambridge':
         train_feature_matching(args, model, feat_model, optimizer, i_split, hwf, near, far, device, early_stopping, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl)
+    elif args.dataset_type == 'Custom':
+        train_feature_matching(args, model, feat_model, optimizer, i_split, hwf, near, far, device, early_stopping, train_dl=train_dl, val_dl=val_dl, test_dl=test_dl)
 
 def eval():
     print(parser.format_values())
@@ -145,6 +147,8 @@ def eval():
         train_dl, val_dl, test_dl, hwf, i_split, near, far = load_7Scenes_dataloader(args)
     elif args.dataset_type == 'Cambridge':
         train_dl, val_dl, test_dl, hwf, i_split, near, far = load_Cambridge_dataloader(args)
+    elif args.dataset_type == 'Custom':
+        train_dl, val_dl, test_dl, hwf, i_split, near, far = load_custom_dataloader(args)
     else:
         print("please choose dataset_type: 7Scenes or Cambridge, exiting...")
         sys.exit()

@@ -4,6 +4,9 @@ def config_parser():
     parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
     parser.add_argument("--multi_gpu", action='store_true', help='use multiple gpu on the server')
 
+    # Custom
+    parser.add_argument("--world_setup_path", type=str, default=None, help='path to world_setup.json')
+
     # 7Scenes
     parser.add_argument("--trainskip", type=int, default=1, help='will load 1/N images from train sets, useful for large datasets like 7 Scenes')
     parser.add_argument("--df", type=float, default=1., help='image downscale factor')

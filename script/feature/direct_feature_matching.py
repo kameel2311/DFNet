@@ -434,7 +434,8 @@ def train_feature_matching(args, model, feat_model, optimizer, i_split, hwf, nea
     render_kwargs_test['network_fn'] = disable_model_grad(render_kwargs_test['network_fn'])
     render_kwargs_test['network_fine'] = disable_model_grad(render_kwargs_test['network_fine'])
 
-    N_epoch = 2001
+    # N_epoch = 2001
+    N_epoch = 251
     print('Begin')
     print('TRAIN views are', i_train)
     print('TEST views are', i_test)
