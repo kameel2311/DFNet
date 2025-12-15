@@ -6,6 +6,48 @@
 
 [![DFNet](imgs/DFNet.png)](https://arxiv.org/abs/2204.00559)
 
+
+
+# My Own Configuration
+Notes on my own additions to the repo
+## Setup 
+Build with docker compose , modify the mounting for dataset loading
+
+## Custom Dataloader
+I added own custom dataloader
+
+## Scripts to run
+```sh
+cd script
+
+# 1. Analyze your scene first
+python analyze_scene.py /workspace/datasets/Loc_Conf_Dataset/map_empty/transforms.json
+
+# 2. Train NeRF (it will now use the world_setup.json)
+python run_nerf.py --config config_custom_nerfh.txt
+
+# 3. Train DFNet
+python run_feature.py --config config_custom_dfnet.txt
+
+# 4. Train DFNet_dm
+python train.py --config config_custom_dfnetdm.txt
+
+# 5. Inference with coordinate transform
+python inference.py \
+    --model_path ../logs/custom_scene/dfnetdm/xxx.pt \
+    --dataset_path /workspace/datasets/Loc_Conf_Dataset/xxx \
+    --df 4.0 \
+    --output_dir ./inference_results/xxx \
+    --world_setup_path=/workspace/script/recommended_world_setup.json \
+    --compare_in_original_frame
+
+```
+
+## Known Bugs
+If world_setup.json is not passed it will give a None is not a path error - just add if statement before checking for path existence
+
+
+# Back to DFNET Documentation
 ## Setup
 ### Installing Requirements
 We tested our code based on CUDA11.3+, PyTorch 1.11.0+, and Python 3.7+ using [docker](https://docs.docker.com/engine/install/ubuntu/).
